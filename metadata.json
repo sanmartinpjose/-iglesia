@@ -1,0 +1,6 @@
+{
+  "name": "Ecclesia",
+  "description": "Sistema multi-congregación para gestión de iglesias, seguimiento de miembros, conexiones familiares y tesorería.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

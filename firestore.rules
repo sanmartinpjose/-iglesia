@@ -1,0 +1,157 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    // Pillar 8 Optimized Check: Relational access based on adminEmails array on documents.
+    // This allows listing collections without hitting the 10 get() limit.
+    function hasAccess(data) {
+      return isSignedIn() && (request.auth.token.email.lower() in data.get('adminEmails', []));
+    }
+
+    function belongsToChurch(churchId) {
+      return isSignedIn() && 
+             get(/databases/$(database)/documents/churches/$(churchId)).data.get('adminEmails', []).hasAny([request.auth.token.email.lower()]);
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidChurch(data) {
+      return data.name is string && data.name.size() <= 200 &&
+             data.ownerId is string &&
+             data.adminEmails is list && data.adminEmails.size() > 0 &&
+             (data.get('adminRoles', null) == null || data.adminRoles is map);
+    }
+
+    // --- Entity Validations ---
+
+    function isValidMember(data) {
+      return data.churchId is string &&
+             data.adminEmails is list &&
+             data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 200 &&
+             data.gender in ['M', 'F'] &&
+             data.isBaptized is bool &&
+             data.hasHolySpiritSeal is bool &&
+             data.isServer is bool &&
+             data.segment in ['Niño', 'Adolescente', 'Joven', 'Adulto'] &&
+             data.status in ['Activo', 'Inactivo', 'Trasladado'] &&
+             (data.get('birthDate', '') is string) &&
+             (data.get('email', '') is string) &&
+             (data.get('phone', '') is string) &&
+             (data.get('address', '') is string) &&
+             (data.get('photoUrl', '') is string) &&
+             (data.get('notes', '') is string) &&
+             (data.get('updatedAt', request.time) is timestamp);
+    }
+
+    function isValidRelationship(data) {
+      return data.churchId is string &&
+             data.adminEmails is list &&
+             isValidId(data.memberId1) &&
+             isValidId(data.memberId2) &&
+             data.memberId1 != data.memberId2 &&
+             data.type in ['parent', 'child', 'sibling', 'spouse', 'cousin', 'other'] &&
+             (data.get('createdAt', request.time) is timestamp);
+    }
+
+    function isValidFinancialRecord(data) {
+      return data.churchId is string &&
+             data.adminEmails is list &&
+             data.type in ['income', 'expense'] &&
+             data.amount is number && data.amount >= 0 &&
+             data.category is string && data.category.size() <= 100 &&
+             data.date is timestamp;
+    }
+
+    function isValidConfig(data) {
+      return data.churchId is string &&
+             data.adminEmails is list &&
+             data.name is string && data.name.size() <= 200 &&
+             data.pastorName is string && data.pastorName.size() <= 200 &&
+             data.worshipSchedule is list &&
+             data.specialServices is list &&
+             data.missionaryDays is list &&
+             data.birthdayNoticeDays is number &&
+             data.enableBirthdayEmails is bool &&
+             (data.get('updatedAt', request.time) is timestamp);
+    }
+
+    function isValidAttendance(data) {
+      return data.churchId is string &&
+             data.adminEmails is list &&
+             data.date is timestamp &&
+             data.count is number && data.count >= 0 &&
+             data.presentMemberIds is list &&
+             data.breakdown.children is number &&
+             data.breakdown.men is number &&
+             data.breakdown.women is number &&
+             data.breakdown.visitors is number &&
+             data.serviceType is string && data.serviceType.size() <= 100;
+    }
+
+    // --- Collection Matches ---
+
+    match /churches/{churchId} {
+      allow create: if isSignedIn() && isValidId(churchId) && isValidChurch(incoming()) && incoming().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && request.auth.token.email.lower() in resource.data.get('adminEmails', []);
+      allow get: if isSignedIn() && (request.auth.token.email.lower() in resource.data.get('adminEmails', []) || resource.data.get('ownerId', '') == request.auth.uid);
+      allow update: if isSignedIn() && (request.auth.token.email.lower() in resource.data.get('adminEmails', []) || resource.data.get('ownerId', '') == request.auth.uid) && isValidChurch(incoming());
+    }
+
+    match /attendance/{attendanceId} {
+      allow read: if hasAccess(resource.data);
+      allow create: if hasAccess(incoming()) && isValidAttendance(incoming());
+      allow update: if hasAccess(resource.data) && hasAccess(incoming()) && isValidAttendance(incoming());
+      allow delete: if hasAccess(resource.data);
+    }
+
+    match /config/{configId} {
+      allow read: if hasAccess(resource.data);
+      allow create: if hasAccess(incoming()) && isValidConfig(incoming());
+      allow update: if hasAccess(resource.data) && hasAccess(incoming()) && isValidConfig(incoming());
+      allow delete: if hasAccess(resource.data);
+    }
+
+    match /members/{memberId} {
+      allow read: if hasAccess(resource.data);
+      allow create: if hasAccess(incoming()) && isValidMember(incoming());
+      allow update: if hasAccess(resource.data) && hasAccess(incoming()) && isValidMember(incoming());
+      allow delete: if hasAccess(resource.data);
+    }
+
+    match /relationships/{relId} {
+      allow read: if hasAccess(resource.data);
+      allow create: if hasAccess(incoming()) && 
+                    isValidRelationship(incoming()) &&
+                    exists(/databases/$(database)/documents/members/$(incoming().memberId1)) &&
+                    exists(/databases/$(database)/documents/members/$(incoming().memberId2));
+      allow update: if hasAccess(resource.data) && hasAccess(incoming()) && isValidRelationship(incoming());
+      allow delete: if hasAccess(resource.data);
+    }
+
+    match /financials/{recordId} {
+      allow read: if hasAccess(resource.data);
+      allow create: if hasAccess(incoming()) && isValidFinancialRecord(incoming());
+      allow update: if hasAccess(resource.data) && hasAccess(incoming()) && isValidFinancialRecord(incoming());
+      allow delete: if hasAccess(resource.data);
+    }
+  }
+}

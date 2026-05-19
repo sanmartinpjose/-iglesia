@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
+  
+  --color-primary: #0369a1;
+  --color-secondary: #0ea5e9;
+  --color-accent: #7dd3fc;
+  --color-surface: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-text-main: #0f172a;
+  --color-text-muted: #64748b;
+}
+
+@layer base {
+  html, body {
+    @apply overflow-x-hidden;
+  }
+  body {
+    @apply bg-surface text-text-main font-sans antialiased selection:bg-blue-100 selection:text-primary;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight font-bold;
+  }
+  h1 { @apply text-3xl md:text-5xl font-extrabold; }
+  h2 { @apply text-xl md:text-3xl font-extrabold; }
+  h3 { @apply text-lg md:text-xl font-bold; }
+  h4 { @apply text-base md:text-lg font-bold; }
+}
+
+.glass {
+  @apply bg-white/40 backdrop-blur-2xl border border-white/20 shadow-xl;
+}
+
+.liquid-glass {
+  @apply bg-white/60 backdrop-blur-3xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.08)];
+}
+
+.badge-pill {
+  @apply px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.15em] border transition-all;
+}
+
+.badge-pill-primary {
+  @apply bg-blue-50 text-primary border-blue-100;
+}
+
+.badge-pill-slate {
+  @apply bg-slate-50 text-slate-500 border-slate-200;
+}
+
+.badge-pill-emerald {
+  @apply bg-emerald-50 text-emerald-600 border-emerald-100;
+}
+
+.badge-pill-rose {
+  @apply bg-rose-50 text-rose-600 border-rose-100;
+}
+
+.bento-card {
+  @apply bg-white rounded-[2rem] border border-slate-100 p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all duration-300 hover:shadow-[0_10px_30px_rgba(0,0,0,0.04)] hover:border-blue-100;
+}
+
+.card-hover {
+  @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+}
+
+.bento-grid-layout {
+  @apply grid grid-cols-12 gap-4 auto-rows-min;
+}

@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == 'jfsanmartinp@gmail.com';
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Entity Validations ---
+
+    function isValidMember(data) {
+      return data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 200 &&
+             data.isBaptized is bool &&
+             data.hasHolySpiritSeal is bool &&
+             data.isServer is bool &&
+             (data.get('birthDate', '') is string) &&
+             (data.get('email', '') is string) &&
+             (data.get('phone', '') is string) &&
+             (data.get('address', '') is string);
+    }
+
+    function isValidRelationship(data) {
+      return isValidId(data.memberId1) &&
+             isValidId(data.memberId2) &&
+             data.memberId1 != data.memberId2 &&
+             data.type in ['parent', 'child', 'sibling', 'spouse', 'cousin', 'other'];
+    }
+
+    function isValidFinancialRecord(data) {
+      return data.type in ['income', 'expense'] &&
+             data.amount is number && data.amount >= 0 &&
+             data.category is string && data.category.size() <= 100 &&
+             data.date is timestamp;
+    }
+
+    // --- Collection Matches ---
+
+    match /members/{memberId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() && isValidMember(incoming());
+      allow update: if isAdmin() && isValidMember(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasAll([]) // Allow all for admin, but still validate schema
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /relationships/{relId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() && isValidRelationship(incoming()) &&
+                    exists(/databases/$(database)/documents/members/$(incoming().memberId1)) &&
+                    exists(/databases/$(database)/documents/members/$(incoming().memberId2));
+      allow update: if isAdmin() && isValidRelationship(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /financials/{recordId} {
+      allow read: if isAdmin(); // Treasury is highly sensitive
+      allow create: if isAdmin() && isValidFinancialRecord(incoming());
+      allow update: if isAdmin() && isValidFinancialRecord(incoming());
+      allow delete: if isAdmin();
+    }
+  }
+}

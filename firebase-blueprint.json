@@ -1,0 +1,180 @@
+{
+  "entities": {
+    "Member": {
+      "title": "Member",
+      "description": "A person belonging to the church congregation",
+      "type": "object",
+      "properties": {
+        "churchId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "gender": { "type": "string", "enum": ["M", "F"] },
+        "photoUrl": { "type": "string" },
+        "segment": { "type": "string", "enum": ["Niño", "Adolescente", "Joven", "Adulto"] },
+        "status": { "type": "string", "enum": ["Activo", "Inactivo", "Trasladado"] },
+        "birthDate": { "type": "string", "format": "date" },
+        "isBaptized": { "type": "boolean" },
+        "baptismDate": { "type": "string", "format": "date" },
+        "hasHolySpiritSeal": { "type": "boolean" },
+        "holySpiritSealDate": { "type": "string", "format": "date" },
+        "isServer": { "type": "boolean" },
+        "serverRole": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["churchId", "fullName", "gender", "isBaptized", "hasHolySpiritSeal", "isServer", "segment", "status"]
+    },
+    "Relationship": {
+      "title": "Relationship",
+      "description": "A family connection between two members",
+      "type": "object",
+      "properties": {
+        "churchId": { "type": "string" },
+        "memberId1": { "type": "string" },
+        "memberId2": { "type": "string" },
+        "type": { "type": "string", "enum": ["parent", "child", "sibling", "spouse", "cousin", "other"] },
+        "metadata": { "type": "string" }
+      },
+      "required": ["churchId", "memberId1", "memberId2", "type"]
+    },
+    "FinancialRecord": {
+      "title": "Financial Record",
+      "description": "A treasury entry (income or expense)",
+      "type": "object",
+      "properties": {
+        "churchId": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "memberId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["churchId", "type", "amount", "category", "date"]
+    },
+    "Church": {
+      "title": "Church",
+      "description": "A church congregation",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "adminEmails": { "type": "array", "items": { "type": "string" } },
+        "adminRoles": { 
+          "type": "object", 
+          "additionalProperties": { 
+            "type": "array", 
+            "items": { "type": "string", "enum": ["Administrador", "Tesorero", "Pastor", "Secretario", "Vocal", "Servidor"] } 
+          } 
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "adminEmails"]
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "description": "Daily attendance for services",
+      "type": "object",
+      "properties": {
+        "churchId": { "type": "string" },
+        "adminEmails": { "type": "array", "items": { "type": "string" } },
+        "date": { "type": "string", "format": "date" },
+        "count": { "type": "number" },
+        "presentMemberIds": { "type": "array", "items": { "type": "string" } },
+        "breakdown": {
+          "type": "object",
+          "properties": {
+            "children": { "type": "number" },
+            "men": { "type": "number" },
+            "women": { "type": "number" },
+            "visitors": { "type": "number" }
+          },
+          "required": ["children", "men", "women", "visitors"]
+        },
+        "serviceType": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["churchId", "adminEmails", "date", "count", "presentMemberIds", "serviceType", "breakdown"]
+    },
+    "Config": {
+      "title": "Church Configuration",
+      "description": "Settings and preferences for the church",
+      "type": "object",
+      "properties": {
+        "churchId": { "type": "string" },
+        "adminEmails": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "pastorName": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "birthdayNoticeDays": { "type": "number" },
+        "enableBirthdayEmails": { "type": "boolean" },
+        "worshipSchedule": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "day": { "type": "string" },
+              "time": { "type": "string" }
+            }
+          }
+        },
+        "specialServices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "missionaryDays": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "label": { "type": "string" }
+            }
+          }
+        },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["churchId", "adminEmails", "name", "pastorName", "birthdayNoticeDays", "enableBirthdayEmails"]
+    }
+  },
+  "firestore": {
+    "/config/{configId}": {
+      "schema": "Config",
+      "description": "Church configuration settings"
+    },
+    "/churches/{churchId}": {
+      "schema": "Church",
+      "description": "Congregation definitions"
+    },
+    "/attendance/{attendanceId}": {
+      "schema": "AttendanceRecord",
+      "description": "Attendance history"
+    },
+    "/members/{memberId}": {
+      "schema": "Member",
+      "description": "Church members collection"
+    },
+    "/relationships/{relationshipId}": {
+      "schema": "Relationship",
+      "description": "Family connections between members"
+    },
+    "/financials/{recordId}": {
+      "schema": "FinancialRecord",
+      "description": "Treasury records"
+    },
+    "/churches/{churchId}": {
+      "schema": "Church",
+      "description": "Congregation definitions"
+    }
+  }
+}
