@@ -31,7 +31,10 @@ export const AttendanceHistory: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!church || !user) return;
+    if (!church || !user) {
+      setLoading(false);
+      return;
+    }
 
     const q = query(
       collection(db, 'attendance'),
@@ -60,6 +63,18 @@ export const AttendanceHistory: React.FC = () => {
 
     return () => { unsubA(); unsubM(); };
   }, [church, user]);
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-6">
+          <History size={40} />
+        </div>
+        <h2 className="text-slate-900 mb-2">Acceso Restringido</h2>
+        <p className="text-text-muted max-w-xs mx-auto">Debes iniciar sesión para ver el historial de asistencia.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
